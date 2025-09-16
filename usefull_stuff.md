@@ -4,6 +4,13 @@ https://support.kaspersky.com/help/KSC/14.2/KSCAPI/a00589.html
 https://support.kaspersky.com/help/KSC/14.2/KSCAPI/a00591.html#details
 - TotpRegistration Class Reference
 https://support.kaspersky.com/help/KSC/14.2/KSCAPI/a00590.html#details
+- раздел Client authentication
+https://support.kaspersky.com/help/KSC/14/KSCAPI/index.html
+- Two-factor authentication 
+https://support.kaspersky.com/help/KSC/15.1/KSCAPI/a00406.html
+- KlAkOAPI Python package 
+https://support.kaspersky.com/help/KSC/14/KSCAPI/a00444.html
+
 
 - Sample. Shows how you can create report of effective user rights for specified user.
 https://support.kaspersky.com/help/KSC/15/KSCAPI/a00435.html

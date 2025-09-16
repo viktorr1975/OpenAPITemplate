@@ -1,6 +1,6 @@
 certifi==2025.6.15
 charset-normalizer==3.4.2
 idna==3.10
-KlAkOAPI @ file://KlAkOAPI-15.1.tar.gz#sha256=8347b3a09e274b2c5676326fd6eac5da8a156fb5e028491302564d911e481e0c
+KlAkOAPI @ file:///home/vit/PycharmProjects/New%20QR/KlAkOAPI-15.1.tar.gz#sha256=8347b3a09e274b2c5676326fd6eac5da8a156fb5e028491302564d911e481e0c
 requests==2.32.4
 urllib3==2.5.0

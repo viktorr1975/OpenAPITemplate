@@ -1,12 +1,14 @@
 from KlAkOAPI.AdmServer import KlAkAdmServer
 #from KlAkOAPI.TotpUserSettings import ClearUserSecret, IfCanClearUser2FaSecret
-from KlAkOAPI.Params import KlAkParams, KlAkArray
+from KlAkOAPI.Params import KlAkParams, KlAkArray, KlAkParamsEncoder
 from KlAkOAPI.SrvView import KlAkSrvView
 
 #import inspect
+import json
+from KlAkOAPI.Params import KlAkParamsEncoder
 
 import urllib3  #
-import passwd   # файл с логинами/паролями, которй в GIT не идёт
+import passwd   # файл с логинами/паролями, который в GIT не идёт
 import argparse # разбор командной строки
 import console     # модуль сообщений для опций командной строки
 import requests
@@ -21,7 +23,7 @@ import json
 # password = passwd.password
 username = 'OpenAPI_2FA'
 password = '1qazXSW@'
-username2changeQR = 'WIN-IOTUM83MVJE\OpenAPI_2FA_1'
+#username2changeQR = 'WIN-IOTUM83MVJE\OpenAPI_2FA_1'
 
 def ConnectKSC_2FA_Token(ip):
     # connect to KSC  with two-factor Token authentication using TOTP codes
@@ -108,23 +110,6 @@ def ConnectKSC_2FA_Token(ip):
 # # IP4 addresses can be represented in big-endian byte order,
 #     return socket.inet_ntoa(struct.pack('<I', n))
 
-def Enumerate(oSrvView, wstrIteratorId):
-    iRecordCount = oSrvView.GetRecordCount(wstrIteratorId).RetVal()
-    # iStep = 200
-    # iStart = 0
-    # while iStart < iRecordCount:
-    #     pRecords = oSrvView.GetRecordRange(wstrIteratorId, iStart, iStart + iStep).OutPar('pRecords')
-    #     for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
-    #         print('TrusteeId: ', oObj['ul_llTrusteeId'], ', DisplayName: ', oObj['ul_wstrDisplayName'])
-    #     iStart += iStep + 1
-    ul_llTrusteeId = 0
-    if iRecordCount == 1:
-        pRecords = oSrvView.GetRecordRange(wstrIteratorId, nStart=0, nEnd=1).OutPar('pRecords')
-        for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
-            ul_llTrusteeId = oObj['ul_llTrusteeId']
-    oSrvView.ReleaseIterator(wstrIteratorId)
-    return ul_llTrusteeId
-
 def get_args():
 # получим данные от пользователя через командную строку
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=console.helpme)  # Initialize arguments parser
@@ -156,6 +141,65 @@ def get_args():
     # print("Необходимо указать ip адрес KSC: % s" % args)
     return args
 
+# def Enumerate(oSrvView, wstrIteratorId):
+#     iRecordCount = oSrvView.GetRecordCount(wstrIteratorId).RetVal()
+#     # iStep = 200
+#     # iStart = 0
+#     # while iStart < iRecordCount:
+#     #     pRecords = oSrvView.GetRecordRange(wstrIteratorId, iStart, iStart + iStep).OutPar('pRecords')
+#     #     for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
+#     #         print('TrusteeId: ', oObj['ul_llTrusteeId'], ', DisplayName: ', oObj['ul_wstrDisplayName'])
+#     #     iStart += iStep + 1
+#     ul_llTrusteeId = 0
+#     if iRecordCount == 1:
+#         pRecords = oSrvView.GetRecordRange(wstrIteratorId, nStart=0, nEnd=1).OutPar('pRecords')
+#         for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
+#             ul_llTrusteeId = oObj['ul_llTrusteeId']
+#     oSrvView.ReleaseIterator(wstrIteratorId)
+#     return ul_llTrusteeId
+
+def FindUserId(server, strUsername):
+    # Get user id by name
+
+    # oSrvView = KlAkSrvView(server)
+    # oFields2Return = KlAkArray(['ul_llTrusteeId', 'ul_wstrDisplayName'])
+    # oField2Order = KlAkArray([{'Name': 'ul_llTrusteeId', 'Asc': True}])
+    # wstrIteratorId = oSrvView.ResetIterator('GlobalUsersListSrvViewName',
+    #                                         '(ul_wstrDisplayName = "' + strUsername + '")',
+    #                                         oFields2Return,
+    #                                         oField2Order,
+    #                                         {},
+    #                                         lifetimeSec=60 * 3).OutPar('wstrIteratorId')
+    # llTrusteeId = Enumerate(oSrvView, wstrIteratorId)
+
+    oSrvView = KlAkSrvView(server)
+    wstrIteratorId = oSrvView.ResetIterator('GlobalUsersListSrvViewName',
+                                            '(&(ul_wstrDisplayName=\"' + strUsername + '\")(ul_nVServer = 0))',
+                                            ['ul_bTotpReigstered', 'ul_llTrusteeId', 'ul_wstrDisplayName'],
+                                            [],
+                                            {},
+                                            lifetimeSec=60 * 5).OutPar('wstrIteratorId')
+    llTrusteeId = -1
+    if oSrvView.GetRecordCount(wstrIteratorId).RetVal() > 0:
+        pRecords = oSrvView.GetRecordRange(wstrIteratorId, 0, 1).OutPar('pRecords')
+        pRecordsArray = pRecords['KLCSP_ITERATOR_ARRAY']
+        if pRecordsArray != None and len(pRecordsArray) > 0:
+            llTrusteeId = pRecordsArray[0]['ul_llTrusteeId']    #Unique account ID
+            bTotpReigstered = pRecordsArray[0]['ul_llTrusteeId']    #Is the 2FA secret registered for a user
+    oSrvView.ReleaseIterator(wstrIteratorId)
+
+    if llTrusteeId == -1:
+        print('User', strUsername, 'not found')
+        return
+
+    return llTrusteeId
+
+# заготовка аналога функции TotpUserSettings::ClearUserSecret 	( 	long  	llTrusteeId	)
+# def GetUpdatesInfo(self, pFilter):
+#     data = {'pFilter': pFilter}
+#     response = self.server.session.post(url = self.server.Call((lambda: self.instance + '.' if self.instance != None and self.instance != '' else '')() + 'Updates.GetUpdatesInfo'), headers = KlAkBase.common_headers, data = json.dumps(data, cls = KlAkParamsEncoder))
+#     return self.ParseResponse(response.status_code, response.text)
+
 if __name__ == '__main__':
 #    print (inspect.getmodule(ClearUserSecret))
     args = get_args()
@@ -170,13 +214,25 @@ if __name__ == '__main__':
         exit()
     if server:
         LogFile.write("Успешно подключился к {}\n".format(KSCip))
-        oSrvView = KlAkSrvView(server)
-        oFields2Return = KlAkArray(['ul_llTrusteeId', 'ul_wstrDisplayName'])
-        oField2Order = KlAkArray([{'Name': 'ul_llTrusteeId', 'Asc': True}])
-        wstrIteratorId = oSrvView.ResetIterator('GlobalUsersListSrvViewName', '(ul_wstrDisplayName = "' + username2changeQR + '")', oFields2Return, oField2Order, {},
-                                                lifetimeSec=60 * 3).OutPar('wstrIteratorId')
-        ul_llTrusteeId = Enumerate(oSrvView, wstrIteratorId)
-        print(ul_llTrusteeId)
+        # Get user id by name
+        userName = 'WIN-IOTUM83MVJE\OpenAPI_2FA'
+        userId = FindUserId(server, userName)
+        print(f'User name: {userName}, User id: {userId}')
+        # userName = 'WIN-IOTUM83MVJE\OpenAPI_2FA_1'
+        # userId = FindUserId(server, userName)
+        # print(f'User name: {userName}, User id: {userId}')
+
+        # if userId != -1:
+        #     # report to be generated
+        #     nReportID = AddUserEffRightsReport(oReportManager, userId)
+        #
+        #     # create report
+        #     download_filename = GenerateReport(server, oReportManager, nReportID)
+        #     print('Now you can analyse report file: ', download_filename)
+
+
+
+
 #        ClearUserSecret(ul_llTrusteeId)
         server.Disconnect()
     else:

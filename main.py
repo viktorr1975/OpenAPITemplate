@@ -141,58 +141,70 @@ def get_args():
     # print("Необходимо указать ip адрес KSC: % s" % args)
     return args
 
-# def Enumerate(oSrvView, wstrIteratorId):
-#     iRecordCount = oSrvView.GetRecordCount(wstrIteratorId).RetVal()
-#     # iStep = 200
-#     # iStart = 0
-#     # while iStart < iRecordCount:
-#     #     pRecords = oSrvView.GetRecordRange(wstrIteratorId, iStart, iStart + iStep).OutPar('pRecords')
-#     #     for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
-#     #         print('TrusteeId: ', oObj['ul_llTrusteeId'], ', DisplayName: ', oObj['ul_wstrDisplayName'])
-#     #     iStart += iStep + 1
-#     ul_llTrusteeId = 0
-#     if iRecordCount == 1:
-#         pRecords = oSrvView.GetRecordRange(wstrIteratorId, nStart=0, nEnd=1).OutPar('pRecords')
-#         for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
-#             ul_llTrusteeId = oObj['ul_llTrusteeId']
-#     oSrvView.ReleaseIterator(wstrIteratorId)
-#     return ul_llTrusteeId
+def Enumerate(oSrvView, wstrIteratorId):
+    iRecordCount = oSrvView.GetRecordCount(wstrIteratorId).RetVal()
+    ul_llTrusteeId = -1
+    iStep = 200
+    iStart = 0
+    result = []
+    while iStart < iRecordCount:
+        pRecords = oSrvView.GetRecordRange(wstrIteratorId, iStart, iStart + iStep).OutPar('pRecords')
+        for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
+            UserId = {}
+            UserId[oObj['ul_wstrDisplayName']] = oObj['ul_llTrusteeId']
+#            print('TrusteeId: ', oObj['ul_llTrusteeId'], ', DisplayName: ', oObj['ul_wstrDisplayName'])
+            result.append(UserId)
+        iStart += iStep + 1
+    # if iRecordCount == 1:
+    #     pRecords = oSrvView.GetRecordRange(wstrIteratorId, nStart=0, nEnd=1).OutPar('pRecords')
+    #     for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
+    #         ul_llTrusteeId = oObj['ul_llTrusteeId']
+    # oSrvView.ReleaseIterator(wstrIteratorId)
+    #return ul_llTrusteeId
+    return result
 
 def FindUserId(server, strUsername):
     # Get user id by name
 
-    # oSrvView = KlAkSrvView(server)
-    # oFields2Return = KlAkArray(['ul_llTrusteeId', 'ul_wstrDisplayName'])
-    # oField2Order = KlAkArray([{'Name': 'ul_llTrusteeId', 'Asc': True}])
-    # wstrIteratorId = oSrvView.ResetIterator('GlobalUsersListSrvViewName',
-    #                                         '(ul_wstrDisplayName = "' + strUsername + '")',
-    #                                         oFields2Return,
-    #                                         oField2Order,
-    #                                         {},
-    #                                         lifetimeSec=60 * 3).OutPar('wstrIteratorId')
-    # llTrusteeId = Enumerate(oSrvView, wstrIteratorId)
-
     oSrvView = KlAkSrvView(server)
+    oFields2Return = KlAkArray(['ul_llTrusteeId', 'ul_wstrDisplayName'])
+    oField2Order = KlAkArray([{'Name': 'ul_llTrusteeId', 'Asc': True}])
     wstrIteratorId = oSrvView.ResetIterator('GlobalUsersListSrvViewName',
-                                            '(&(ul_wstrDisplayName=\"' + strUsername + '\")(ul_nVServer = 0))',
-                                            ['ul_bTotpReigstered', 'ul_llTrusteeId', 'ul_wstrDisplayName'],
-                                            [],
+                                            '(ul_wstrDisplayName = "' + strUsername + '")',
+                                            oFields2Return,
+                                            oField2Order,
                                             {},
-                                            lifetimeSec=60 * 5).OutPar('wstrIteratorId')
-    llTrusteeId = -1
-    if oSrvView.GetRecordCount(wstrIteratorId).RetVal() > 0:
-        pRecords = oSrvView.GetRecordRange(wstrIteratorId, 0, 1).OutPar('pRecords')
-        pRecordsArray = pRecords['KLCSP_ITERATOR_ARRAY']
-        if pRecordsArray != None and len(pRecordsArray) > 0:
-            llTrusteeId = pRecordsArray[0]['ul_llTrusteeId']    #Unique account ID
-            bTotpReigstered = pRecordsArray[0]['ul_llTrusteeId']    #Is the 2FA secret registered for a user
-    oSrvView.ReleaseIterator(wstrIteratorId)
+                                            lifetimeSec=60 * 3).OutPar('wstrIteratorId')
+    UsersId = Enumerate(oSrvView, wstrIteratorId)
+    #llTrusteeId = Enumerate(oSrvView, wstrIteratorId)
 
-    if llTrusteeId == -1:
-        print('User', strUsername, 'not found')
+    # oSrvView = KlAkSrvView(server)
+    # wstrIteratorId = oSrvView.ResetIterator('GlobalUsersListSrvViewName',
+    #                                         '(&(ul_wstrDisplayName=\"' + strUsername + '\")(ul_nVServer = 0))',
+    #                                         ['ul_bTotpReigstered', 'ul_llTrusteeId', 'ul_wstrDisplayName'],
+    #                                         [],
+    #                                         {},
+    #                                         lifetimeSec=60 * 5).OutPar('wstrIteratorId')
+    # llTrusteeId = -1
+    # if oSrvView.GetRecordCount(wstrIteratorId).RetVal() > 0:
+    #     pRecords = oSrvView.GetRecordRange(wstrIteratorId, 0, 1).OutPar('pRecords')
+    #     pRecordsArray = pRecords['KLCSP_ITERATOR_ARRAY']
+    #     if pRecordsArray != None and len(pRecordsArray) > 0:
+    #         llTrusteeId = pRecordsArray[0]['ul_llTrusteeId']    #Unique account ID
+    #         bTotpReigstered = pRecordsArray[0]['ul_llTrusteeId']    #Is the 2FA secret registered for a user
+    # oSrvView.ReleaseIterator(wstrIteratorId)
+
+    # if llTrusteeId == -1:
+    #     LogFile.write(f'Пользователь "{strUsername}" не найден\n')
+    #     return
+    #
+    # return llTrusteeId
+
+    if len(UsersId) == 0:
+        LogFile.write(f'Пользователь "{strUsername}" не найден\n')
         return
 
-    return llTrusteeId
+    return UsersId
 
 # заготовка аналога функции TotpUserSettings::ClearUserSecret 	( 	long  	llTrusteeId	)
 # def GetUpdatesInfo(self, pFilter):
@@ -216,8 +228,11 @@ if __name__ == '__main__':
         LogFile.write("Успешно подключился к {}\n".format(KSCip))
         # Get user id by name
         userName = 'WIN-IOTUM83MVJE\OpenAPI_2FA'
-        userId = FindUserId(server, userName)
-        print(f'User name: {userName}, User id: {userId}')
+        userName = '*OpenAP*'
+        UsersId = FindUserId(server, userName)
+        #print(f'User name: {userName}, User id: {userId}')
+        print(UsersId)
+
         # userName = 'WIN-IOTUM83MVJE\OpenAPI_2FA_1'
         # userId = FindUserId(server, userName)
         # print(f'User name: {userName}, User id: {userId}')

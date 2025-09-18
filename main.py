@@ -151,7 +151,7 @@ def Enumerate(oSrvView, wstrIteratorId):
         pRecords = oSrvView.GetRecordRange(wstrIteratorId, iStart, iStart + iStep).OutPar('pRecords')
         for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
             UserId = {}
-            UserId[oObj['ul_wstrDisplayName']] = oObj['ul_llTrusteeId']
+            UserId[oObj['ul_wstrSamAccountName']] = oObj['ul_llTrusteeId']
 #            print('TrusteeId: ', oObj['ul_llTrusteeId'], ', DisplayName: ', oObj['ul_wstrDisplayName'])
             result.append(UserId)
         iStart += iStep + 1
@@ -167,10 +167,10 @@ def FindUserId(server, strUsername):
     # Get user id by name
 
     oSrvView = KlAkSrvView(server)
-    oFields2Return = KlAkArray(['ul_llTrusteeId', 'ul_wstrDisplayName'])
+    oFields2Return = KlAkArray(['ul_llTrusteeId', 'ul_wstrSamAccountName'])
     oField2Order = KlAkArray([{'Name': 'ul_llTrusteeId', 'Asc': True}])
     wstrIteratorId = oSrvView.ResetIterator('GlobalUsersListSrvViewName',
-                                            '(ul_wstrDisplayName = "' + strUsername + '")',
+                                            '(ul_wstrSamAccountName = "' + strUsername + '")',
                                             oFields2Return,
                                             oField2Order,
                                             {},

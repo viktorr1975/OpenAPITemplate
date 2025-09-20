@@ -2,6 +2,7 @@ from KlAkOAPI.AdmServer import KlAkAdmServer
 #from KlAkOAPI.TotpUserSettings import ClearUserSecret, IfCanClearUser2FaSecret
 from KlAkOAPI.Params import KlAkParams, KlAkArray, KlAkParamsEncoder
 from KlAkOAPI.SrvView import KlAkSrvView
+from  KlAkOAPI.SecurityPolicy import KlAkSecurityPolicy
 
 #import inspect
 import json
@@ -151,7 +152,11 @@ def Enumerate(oSrvView, wstrIteratorId):
         pRecords = oSrvView.GetRecordRange(wstrIteratorId, iStart, iStart + iStep).OutPar('pRecords')
         for oObj in pRecords['KLCSP_ITERATOR_ARRAY']:
             UserId = {}
-            UserId[oObj['ul_wstrSamAccountName']] = oObj['ul_llTrusteeId']
+#            UserId[oObj['ul_wstrSamAccountName']] = str(oObj['ul_llTrusteeId']) + ' ' + str(oObj['ul_binSidHash'])   #GlobalUsersListSrvViewName
+#            UserId[oObj['wstrTrusteeDisplayName']] = oObj['binSidHash'] #AdmGroupsAclRolesSrvViewName
+#            UserId[oObj['spl_wstrUsrName']] = oObj['spl_nUsrId']  #SplUserGroupSrvViewName
+#            UserId[oObj['spl_wstrDisplayName']] = oObj['spl_llTrusteeId']  # AdUsersListSrvViewName
+            UserId[oObj['wstrGroupDisplayName']] = oObj['llUserId']  # GlobalUserGroupSrvView
 #            print('TrusteeId: ', oObj['ul_llTrusteeId'], ', DisplayName: ', oObj['ul_wstrDisplayName'])
             result.append(UserId)
         iStart += iStep + 1
@@ -164,11 +169,12 @@ def Enumerate(oSrvView, wstrIteratorId):
     return result
 
 def FindUserId(server, strUsername):
-    # Get user id by name
+# Get user id by name in "GlobalUsersListSrvViewName".
 
     oSrvView = KlAkSrvView(server)
-    oFields2Return = KlAkArray(['ul_llTrusteeId', 'ul_wstrSamAccountName'])
-    oField2Order = KlAkArray([{'Name': 'ul_llTrusteeId', 'Asc': True}])
+    oFields2Return = KlAkArray(['ul_llTrusteeId', 'ul_binSidHash', 'ul_wstrSamAccountName'])
+    #oField2Order = KlAkArray([{'Name': 'ul_llTrusteeId', 'Asc': True}])
+    oField2Order = []
     wstrIteratorId = oSrvView.ResetIterator('GlobalUsersListSrvViewName',
                                             '(ul_wstrSamAccountName = "' + strUsername + '")',
                                             oFields2Return,
@@ -206,6 +212,77 @@ def FindUserId(server, strUsername):
 
     return UsersId
 
+def FindAdmUserId(server, strUsername):
+# Get user id by name in "AdmGroupsAclRolesSrvViewName"(List of ACL roles, administration groups and users)
+    oSrvView = KlAkSrvView(server)
+    oFields2Return = KlAkArray(['binSidHash', 'wstrTrusteeDisplayName'])
+    #oField2Order = KlAkArray([{'Name': 'nInternalUserId', 'Asc': True}])
+    oField2Order = []
+    wstrIteratorId = oSrvView.ResetIterator('AdmGroupsAclRolesSrvViewName',
+                                            '(wstrTrusteeDisplayName = "' + strUsername + '")',
+                                            oFields2Return,
+                                            oField2Order,
+                                            {},
+                                            lifetimeSec=60 * 3).OutPar('wstrIteratorId')
+    UsersId = Enumerate(oSrvView, wstrIteratorId)
+    if len(UsersId) == 0:
+        LogFile.write(f'Пользователь "{strUsername}" не найден\n')
+        return
+    return UsersId
+
+def FindSplUserId(server, strUsername):
+# Get user id by name in "SplUserGroupSrvViewName"( information about relationship between internal users and security internal groups)
+    oSrvView = KlAkSrvView(server)
+    oFields2Return = KlAkArray(['spl_nUsrId', 'spl_wstrFullName'])
+    #oField2Order = KlAkArray([{'Name': 'nInternalUserId', 'Asc': True}])
+    oField2Order = []
+    wstrIteratorId = oSrvView.ResetIterator('SplUserGroupSrvViewName',
+                                            '(spl_wstrFullName = "' + strUsername + '")',
+                                            oFields2Return,
+                                            oField2Order,
+                                            {},
+                                            lifetimeSec=60 * 3).OutPar('wstrIteratorId')
+    UsersId = Enumerate(oSrvView, wstrIteratorId)
+    if len(UsersId) == 0:
+        LogFile.write(f'Пользователь "{strUsername}" не найден\n')
+        return
+    return UsersId
+
+def FindADUserId(server, strUsername):
+# Get user id by name in "AdUsersListSrvViewName"( List users of AD security group members )
+    oSrvView = KlAkSrvView(server)
+    oFields2Return = KlAkArray(['spl_llTrusteeId', 'spl_wstrDisplayName'])
+    #oField2Order = KlAkArray([{'Name': 'nInternalUserId', 'Asc': True}])
+    oField2Order = []
+    wstrIteratorId = oSrvView.ResetIterator('AdUsersListSrvViewName',
+                                            '(spl_wstrDisplayName = "' + strUsername + '")',
+                                            oFields2Return,
+                                            oField2Order,
+                                            {},
+                                            lifetimeSec=60 * 3).OutPar('wstrIteratorId')
+    UsersId = Enumerate(oSrvView, wstrIteratorId)
+    if len(UsersId) == 0:
+        LogFile.write(f'Пользователь "{strUsername}" не найден\n')
+        return
+    return UsersId
+
+def FindADGroupUserId(server, strUsername):
+# Get user id by name in "GlobalUserGroupSrvView"( Users and groups relations. Only for Active Directory users or groups and internal users or groups.)
+    oSrvView = KlAkSrvView(server)
+    oFields2Return = KlAkArray(['llUserId', 'wstrGroupDisplayName'])
+    #oField2Order = KlAkArray([{'Name': 'nInternalUserId', 'Asc': True}])
+    oField2Order = []
+    wstrIteratorId = oSrvView.ResetIterator('GlobalUserGroupSrvView',
+                                            '(wstrGroupDisplayName = "' + strUsername + '")',
+                                            oFields2Return,
+                                            oField2Order,
+                                            {},
+                                            lifetimeSec=60 * 3).OutPar('wstrIteratorId')
+    UsersId = Enumerate(oSrvView, wstrIteratorId)
+    if len(UsersId) == 0:
+        LogFile.write(f'Пользователь "{strUsername}" не найден\n')
+        return
+    return UsersId
 # заготовка аналога функции TotpUserSettings::ClearUserSecret 	( 	long  	llTrusteeId	)
 # def GetUpdatesInfo(self, pFilter):
 #     data = {'pFilter': pFilter}
@@ -225,11 +302,15 @@ if __name__ == '__main__':
         LogFile.write("Ошибка подключения к KSC: {}\n".format(e.data))
         exit()
     if server:
+        # SecurityPolicy = KlAkSecurityPolicy(server)
+        # usersall = SecurityPolicy.GetUsers(-1, -1)
         LogFile.write("Успешно подключился к {}\n".format(KSCip))
         # Get user id by name
         userName = 'WIN-IOTUM83MVJE\OpenAPI_2FA'
-        userName = '*OpenAP*'
-        UsersId = FindUserId(server, userName)
+        userName = '*'
+        #UsersId = FindUserId(server, userName)
+        UsersId = FindADGroupUserId(server, userName)
+        #UsersId = FindSplUserId(server, userName)
         #print(f'User name: {userName}, User id: {userId}')
         print(UsersId)
 

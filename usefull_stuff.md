@@ -11,6 +11,8 @@ https://support.kaspersky.com/help/KSC/15.1/KSCAPI/a00406.html
 - KlAkOAPI Python package 
 https://support.kaspersky.com/help/KSC/14/KSCAPI/a00444.html
 
+-Sample. Creates and finds an internal user.  SecurityPolicy Class
+https://support.kaspersky.com/help/KSC/14.2/KSCAPI/a00441.html
 - Sample. Shows how you can create report of effective user rights for specified user.
 https://support.kaspersky.com/help/KSC/15/KSCAPI/a00435.html
 - List Users
